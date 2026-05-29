@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node /Users/maitemendez/ciren/backend/server.js)",
+      "Bash(curl -s -X PUT http://localhost:3001/api/settings -H 'Content-Type: application/json' -d '{\"name\":\"Maite\",\"cycleLength\":28,\"periodLength\":5,\"lastPeriodStart\":\"2026-04-21\"}')",
+      "Bash(curl -s -X POST http://localhost:3001/api/logs/2026-05-05 -H 'Content-Type: application/json' -d '{\"flow\":[\"Light\"],\"mood\":[\"Calm\",\"Happy\"],\"symptoms\":[],\"activity\":[],\"drive\":[\"Neutral\"],\"lifestyle\":[],\"movement\":[\"Walk\"]}')",
+      "Bash(curl -s http://localhost:3001/api/logs)",
+      "Bash(python3 -m json.tool)",
+      "Bash(kill %1)",
+      "Bash(python3 *)",
+      "Bash(curl -s http://localhost:3001/api/settings)",
+      "Bash(npx vite *)",
+      "Bash(pkill -f \"node.*server.js\")",
+      "Bash(node server.js)",
+      "Bash(curl -s -X DELETE http://localhost:3001/api/reset-onboarding)",
+      "Bash(curl *)",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(node *)"
+    ]
+  }
+}

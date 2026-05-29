@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cirén</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: #EDEAF4;
+    font-family: 'DM Sans', sans-serif;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 30% 20%, #DCC8F055 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 75% 80%, #C8E8D433 0%, transparent 70%);
+    pointer-events: none;
+  }
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #scaler {
+    transform-origin: center center;
+  }
+</style>
+</head>
+<body>
+<div id="stage"><div id="scaler"><div id="root"></div></div></div>
+<script>
+  function scalePhone() {
+    const PHONE_W = 408; // 390 + 2*9 border
+    const PHONE_H = 862; // 844 + 2*9 border
+    const pad = 32;
+    const scaleX = (window.innerWidth  - pad) / PHONE_W;
+    const scaleY = (window.innerHeight - pad) / PHONE_H;
+    const scale  = Math.min(scaleX, scaleY, 1);
+    document.getElementById('scaler').style.transform = `scale(${scale})`;
+  }
+  scalePhone();
+  window.addEventListener('resize', scalePhone);
+</script>
+<script type="text/babel" src="mellow-pwa-shared.jsx"></script>
+<script type="text/babel" src="mellow-innovative.jsx"></script>
+<script type="text/babel">
+  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(CirénApp));
+</script>
+</body>
+</html>
