@@ -7,12 +7,13 @@ import { AuthScreen } from './components/AuthScreen';
 
 const SANS = '"DM Sans", sans-serif';
 
-function Splash() {
+function Splash({ onDone }) {
   const [fadingOut, setFadingOut] = React.useState(false);
   React.useEffect(() => {
-    const t = setTimeout(() => setFadingOut(true), 1800);
-    return () => clearTimeout(t);
-  }, []);
+    const fadeTimer = setTimeout(() => setFadingOut(true), 1800);
+    const doneTimer = setTimeout(onDone, 2200);
+    return () => { clearTimeout(fadeTimer); clearTimeout(doneTimer); };
+  }, [onDone]);
   return (
     <>
       <style>{`
@@ -48,33 +49,30 @@ function Splash() {
 }
 
 function Root() {
-  const [state, setState] = React.useState('loading');
-  const [splashDone, setSplashDone] = React.useState(false);
+  const [authState, setAuthState] = React.useState(null);
+  const [showSplash, setShowSplash] = React.useState(true);
 
   const checkAuth = React.useCallback(() => {
     fetch('/api/auth/me')
       .then(r => r.ok ? r.json() : null)
       .then(user => {
-        if (!user) { setState('auth'); return; }
-        setState(user.isOnboarded ? 'app' : 'onboarding');
+        if (!user) { setAuthState('auth'); return; }
+        setAuthState(user.isOnboarded ? 'app' : 'onboarding');
       })
-      .catch(() => setState('auth'));
+      .catch(() => setAuthState('auth'));
   }, []);
 
   React.useEffect(() => { checkAuth(); }, [checkAuth]);
-  React.useEffect(() => {
-    const t = setTimeout(() => setSplashDone(true), 2200);
-    return () => clearTimeout(t);
-  }, []);
 
   const handleSignOut = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    setState('auth');
+    setAuthState('auth');
   };
 
-  if (!splashDone || state === 'loading') return <Splash />;
-  if (state === 'auth')       return <AuthScreen />;
-  if (state === 'onboarding') return <OnboardingFlow onComplete={checkAuth} />;
+  if (showSplash) return <Splash onDone={() => setShowSplash(false)} />;
+  if (!authState) return null;
+  if (authState === 'auth')       return <AuthScreen onAuth={checkAuth} />;
+  if (authState === 'onboarding') return <OnboardingFlow onComplete={checkAuth} />;
   return <CirénApp onSignOut={handleSignOut} />;
 }
 
