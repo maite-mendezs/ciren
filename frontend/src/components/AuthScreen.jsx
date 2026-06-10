@@ -1,8 +1,9 @@
-import React from 'react';
-import { G, BRAND, PhoneShell } from './shared';
+import React, { useState } from 'react';
+import { G, PhoneShell } from './shared';
 
 const SERIF = '"Cormorant Garamond", serif';
 const SANS  = '"DM Sans", sans-serif';
+const PURPLE = '#2E2248';
 
 function GoogleLogo() {
   return (
@@ -15,44 +16,123 @@ function GoogleLogo() {
   );
 }
 
-export function AuthScreen() {
+const inputStyle = {
+  width: '100%', height: 50, borderRadius: 12,
+  border: '1.5px solid #E5E5EA', background: '#fff',
+  padding: '0 16px', fontSize: 14, color: '#1a1a1a',
+  fontFamily: SANS, outline: 'none', boxSizing: 'border-box',
+};
+
+const btnPrimary = {
+  width: '100%', height: 50, borderRadius: 50,
+  border: 'none', background: PURPLE,
+  fontSize: 14, fontWeight: 500, color: '#fff',
+  fontFamily: SANS, cursor: 'pointer',
+};
+
+const btnSecondary = {
+  width: '100%', height: 50, borderRadius: 50,
+  border: '1.5px solid #E5E5EA', background: '#fff',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+  fontSize: 14, fontWeight: 500, color: '#1a1a1a',
+  fontFamily: SANS, cursor: 'pointer',
+};
+
+export function AuthScreen({ onAuth }) {
+  const [mode, setMode] = useState('home');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const handleGoogle = () => { window.location.href = '/api/auth/google'; };
 
-  return (
+  const handleSubmit = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const endpoint = mode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
+      const body = mode === 'signup' ? { email, password, name } : { email, password };
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Something went wrong'); return; }
+      if (onAuth) onAuth();
+      else window.location.reload();
+    } catch {
+      setError('Network error, please try again');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (mode === 'home') return (
     <PhoneShell>
       <div style={{ flex:1, display:'flex', flexDirection:'column', background:G.stone }}>
-
-        {/* Logo + wordmark */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', paddingTop:64, gap:12 }}>
-          <img src="/logo.png" alt="cirén" style={{ width:52, height:52, objectFit:'contain' }}/>
-          <span style={{ fontSize:20, fontWeight:300, letterSpacing:'.10em', color:'#2E2248', fontFamily:SANS }}>cirén</span>
+          <img src="/logo.png" alt="ciren" style={{ width:52, height:52, objectFit:'contain' }}/>
+          <span style={{ fontSize:20, fontWeight:300, letterSpacing:'.10em', color:PURPLE, fontFamily:SANS }}>ciren</span>
         </div>
-
-        {/* Headline */}
         <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'0 32px', textAlign:'center' }}>
           <h1 style={{ fontFamily:SERIF, fontSize:36, fontWeight:300, color:G.ink, lineHeight:1.15, letterSpacing:'-.01em', margin:'0 0 14px' }}>
             Your cycle,<br/>understood.
           </h1>
           <p style={{ fontSize:14, color:G.muted, margin:0, lineHeight:1.7, fontFamily:SANS, maxWidth:240 }}>
-            Track how your cycle shapes your energy, mood, and mind — every day.
+            Track how your cycle shapes your energy, mood, and mind, every day.
           </p>
         </div>
-
-        {/* CTAs */}
-        <div style={{ padding:'0 24px 48px', display:'flex', flexDirection:'column', gap:14 }}>
-          <button onClick={handleGoogle} style={{
-            width:'100%', height:50, borderRadius:50,
-            border:'1.5px solid #E5E5EA', background:'#fff',
-            display:'flex', alignItems:'center', justifyContent:'center', gap:10,
-            fontSize:14, fontWeight:500, color:G.ink, fontFamily:SANS,
-            cursor:'pointer',
-          }}>
-            <GoogleLogo/>
-            Continue with Google
-          </button>
-
+        <div style={{ padding:'0 24px 48px', display:'flex', flexDirection:'column', gap:12 }}>
+          <button onClick={() => setMode('signup')} style={btnPrimary}>Create account</button>
+          <button onClick={handleGoogle} style={btnSecondary}><GoogleLogo/> Continue with Google</button>
+          <p style={{ textAlign:'center', fontSize:13, color:G.muted, margin:'4px 0 0', fontFamily:SANS }}>
+            Already have an account?{' '}
+            <span onClick={() => setMode('login')} style={{ color:PURPLE, cursor:'pointer', fontWeight:500 }}>Log in</span>
+          </p>
         </div>
+      </div>
+    </PhoneShell>
+  );
 
+  return (
+    <PhoneShell>
+      <div style={{ flex:1, display:'flex', flexDirection:'column', background:G.stone }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', paddingTop:56, gap:12 }}>
+          <img src="/logo.png" alt="ciren" style={{ width:40, height:40, objectFit:'contain' }}/>
+          <span style={{ fontSize:18, fontWeight:300, letterSpacing:'.10em', color:PURPLE, fontFamily:SANS }}>ciren</span>
+        </div>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', padding:'32px 24px 0' }}>
+          <h2 style={{ fontFamily:SERIF, fontSize:28, fontWeight:300, color:G.ink, margin:'0 0 24px', textAlign:'center' }}>
+            {mode === 'signup' ? 'Create your account' : 'Welcome back'}
+          </h2>
+          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            {mode === 'signup' && (
+              <input style={inputStyle} type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)}/>
+            )}
+            <input style={inputStyle} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)}/>
+            <input style={inputStyle} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()}/>
+            {error && <p style={{ color:'#c0392b', fontSize:13, margin:0, fontFamily:SANS, textAlign:'center' }}>{error}</p>}
+            <button onClick={handleSubmit} disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.7 : 1, marginTop:4 }}>
+              {loading ? '...' : mode === 'signup' ? 'Create account' : 'Log in'}
+            </button>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:12, margin:'20px 0' }}>
+            <div style={{ flex:1, height:1, background:'#E5E5EA' }}/>
+            <span style={{ fontSize:12, color:G.muted, fontFamily:SANS }}>or</span>
+            <div style={{ flex:1, height:1, background:'#E5E5EA' }}/>
+          </div>
+          <button onClick={handleGoogle} style={btnSecondary}><GoogleLogo/> Continue with Google</button>
+          <p style={{ textAlign:'center', fontSize:13, color:G.muted, margin:'20px 0 0', fontFamily:SANS }}>
+            {mode === 'signup' ? 'Already have an account? ' : "Don't have an account? "}
+            <span onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }} style={{ color:PURPLE, cursor:'pointer', fontWeight:500 }}>
+              {mode === 'signup' ? 'Log in' : 'Sign up'}
+            </span>
+          </p>
+        </div>
       </div>
     </PhoneShell>
   );

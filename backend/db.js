@@ -110,3 +110,6 @@ try {
 db.prepare(`UPDATE users SET is_onboarded = 1 WHERE id = 1 AND name != 'Me'`).run();
 
 module.exports = db;
+
+// Email/password auth column
+try { db.exec(`ALTER TABLE users ADD COLUMN password_hash TEXT`); } catch {}
