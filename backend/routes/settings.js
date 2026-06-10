@@ -3,7 +3,8 @@ const router = express.Router();
 const db = require('../db');
 
 router.get('/', (req, res) => {
-  const user = db.prepare('SELECT * FROM users WHERE id = 1').get();
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
   res.json({
     name: user.name,
     cycleLength: user.cycle_length,
@@ -26,7 +27,7 @@ router.put('/', (req, res) => {
     if (isOnboarded     !== undefined) { cols.push('is_onboarded = ?');      vals.push(isOnboarded ? 1 : 0); }
     if (isIrregular     !== undefined) { cols.push('is_irregular = ?');      vals.push(isIrregular ? 1 : 0); }
     if (cols.length === 0) return res.json({ ok: true });
-    db.prepare(`UPDATE users SET ${cols.join(', ')} WHERE id = 1`).run(...vals);
+    db.prepare(`UPDATE users SET ${cols.join(', ')} WHERE id = ?`).run(...vals, req.session.userId);
     res.json({ ok: true });
   } catch (err) {
     console.error('[settings PUT]', err.message);
