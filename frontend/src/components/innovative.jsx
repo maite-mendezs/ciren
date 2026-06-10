@@ -324,7 +324,7 @@ function InnoHome({ phase, userData, onTab, onLogSymptoms, todayLog }) {
   const [bannerDismissed, setBannerDismissed] = React.useState(false);
 
   return (
-    <div style={{ flex:1, overflowX:'hidden', overflowY:'auto', background:'#FAFAF8' }}>
+    <div ref={el => { if (el) el.scrollTop = 0; }} style={{ flex:1, overflowX:'hidden', overflowY:'auto', background:'#FAFAF8' }}>
 
       {/* Hero */}
       <div style={{ padding:'32px 28px 28px' }}>
