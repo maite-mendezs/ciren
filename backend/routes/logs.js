@@ -2,10 +2,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// flow and sleep are plain strings; the rest are JSON arrays
 const ARRAY_FIELDS = ['cravings', 'mood', 'mind', 'symptoms', 'movement'];
 const STRING_FIELDS = ['flow', 'sleep'];
-const ALL_FIELDS = [...STRING_FIELDS, ...ARRAY_FIELDS];
 
 function parseLog(row) {
   if (!row) return null;
@@ -21,12 +19,12 @@ function parseLog(row) {
 }
 
 router.get('/', (req, res) => {
-  const rows = db.prepare('SELECT * FROM logs ORDER BY date DESC').all();
+  const rows = db.prepare('SELECT * FROM logs WHERE user_id = ? ORDER BY date DESC').all(req.session.userId);
   res.json(rows.map(parseLog));
 });
 
 router.get('/:date', (req, res) => {
-  const row = db.prepare('SELECT * FROM logs WHERE date = ?').get(req.params.date);
+  const row = db.prepare('SELECT * FROM logs WHERE user_id = ? AND date = ?').get(req.session.userId, req.params.date);
   res.json(parseLog(row));
 });
 
@@ -34,9 +32,9 @@ router.post('/:date', (req, res) => {
   const { date } = req.params;
   const b = req.body;
   db.prepare(`
-    INSERT INTO logs (date, flow, cravings, mood, mind, symptoms, movement, sleep)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(date) DO UPDATE SET
+    INSERT INTO logs (user_id, date, flow, cravings, mood, mind, symptoms, movement, sleep)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, date) DO UPDATE SET
       flow      = excluded.flow,
       cravings  = excluded.cravings,
       mood      = excluded.mood,
@@ -45,14 +43,15 @@ router.post('/:date', (req, res) => {
       movement  = excluded.movement,
       sleep     = excluded.sleep
   `).run(
+    req.session.userId,
     date,
-    b.flow      ?? '',
+    b.flow     ?? '',
     JSON.stringify(b.cravings  ?? []),
     JSON.stringify(b.mood      ?? []),
     JSON.stringify(b.mind      ?? []),
     JSON.stringify(b.symptoms  ?? []),
     JSON.stringify(b.movement  ?? []),
-    b.sleep     ?? '',
+    b.sleep    ?? '',
   );
   res.json({ ok: true });
 });
