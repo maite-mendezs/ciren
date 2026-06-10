@@ -3,18 +3,24 @@ const express  = require('express');
 const cors     = require('cors');
 const session  = require('express-session');
 const passport = require('passport');
+const Database = require('better-sqlite3');
+const SqliteStore = require('better-sqlite3-session-store')(session);
+const path = require('path');
 
 const app = express();
 app.set('trust proxy', 1);
-
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));
 app.use(express.json());
+
+const sessionDb = new Database('./sessions.db');
 app.use(session({
+  store: new SqliteStore({ client: sessionDb }),
   secret:            process.env.SESSION_SECRET || 'ciren-dev-secret',
   resave:            false,
   saveUninitialized: false,
   cookie: { httpOnly: true, sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', secure: process.env.NODE_ENV === "production", maxAge: 30 * 24 * 60 * 60 * 1000 },
 }));
+
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -34,8 +40,6 @@ app.delete('/api/reset-onboarding', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-
-const path = require('path');
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
