@@ -1,5 +1,4 @@
 // shared.jsx — Cirén brand identity
-// Migrated from mellow-pwa-shared.jsx: ES module exports, ProfileTab wired to API
 import React from 'react';
 
 export const PHASES = {
@@ -58,8 +57,6 @@ export const G = {
 
 export const BRAND = '#6B5A8A';
 
-// ─── Four-petal logo mark ─────────────────────────────────────────────────────
-
 export function PetalMark({ size=24, style }) {
   return (
     <img src="/logo.png" alt="cirén" aria-hidden="true"
@@ -67,8 +64,6 @@ export function PetalMark({ size=24, style }) {
     />
   );
 }
-
-// ─── Status bar ───────────────────────────────────────────────────────────────
 
 export function StatusBar({ dark }) {
   const c = dark ? '#fff' : G.ink;
@@ -97,16 +92,7 @@ export function StatusBar({ dark }) {
   );
 }
 
-// ─── Phone shell ──────────────────────────────────────────────────────────────
-
-export function PhoneShell({ children }) {
-  return <>{children}</>;
-}
-
-// ─── Top bar (wordmark only) ──────────────────────────────────────────────────
-
 export function TopBar({ phase }) {
-  const p = phase || PHASES.luteal;
   return (
     <div style={{
       display:'flex', alignItems:'center',
@@ -120,11 +106,7 @@ export function TopBar({ phase }) {
   );
 }
 
-// ─── Bottom tab bar ───────────────────────────────────────────────────────────
-
 export function BottomTabBar({ active, onTab, phase }) {
-  const p = phase || PHASES.luteal;
-
   const TabBtn = ({ tabKey, label, icon }) => {
     const isActive = active === tabKey;
     const color = isActive ? BRAND : G.muted;
@@ -174,8 +156,6 @@ export function BottomTabBar({ active, onTab, phase }) {
   );
 }
 
-// ─── Cycle bar ────────────────────────────────────────────────────────────────
-
 export function CycleBar({ phase, cycleDay, cycleLength=28, periodLength=5 }) {
   const p = phase || PHASES.luteal;
   const segs = [
@@ -195,8 +175,6 @@ export function CycleBar({ phase, cycleDay, cycleLength=28, periodLength=5 }) {
   );
 }
 
-// ─── Primitives ───────────────────────────────────────────────────────────────
-
 export function SectionLabel({ children, style }) {
   return <div style={{ fontSize:10, fontWeight:500, letterSpacing:'.12em', textTransform:'uppercase', color:G.muted, marginBottom:8, fontFamily:'"DM Sans", sans-serif', ...style }}>{children}</div>;
 }
@@ -206,7 +184,6 @@ export function Card({ children, phase, style }) {
 }
 
 export function Chip({ label, active, onClick, phase, style }) {
-  const p = phase || PHASES.luteal;
   return (
     <button onClick={onClick} style={{
       height:34, padding:'0 16px', borderRadius:50,
@@ -221,7 +198,6 @@ export function Chip({ label, active, onClick, phase, style }) {
 }
 
 export function PrimaryBtn({ children, onClick, phase, style, disabled }) {
-  const p = phase || PHASES.luteal;
   return (
     <button onClick={onClick} disabled={disabled} style={{
       width:'100%', height:50, borderRadius:50, border:'none',
@@ -247,8 +223,6 @@ export function SuccessState({ phase, message, sub, onDone }) {
   );
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
-
 export function Toast({ message, onDone }) {
   const [opacity, setOpacity] = React.useState(0);
   React.useEffect(() => {
@@ -270,8 +244,6 @@ export function Toast({ message, onDone }) {
     </div>
   );
 }
-
-// ─── Legal content ────────────────────────────────────────────────────────────
 
 function LegalBlock({ heading, children }) {
   return (
@@ -362,8 +334,6 @@ function LegalTerms() {
   );
 }
 
-// ─── Legal drawer ─────────────────────────────────────────────────────────────
-
 export function LegalDrawer({ modal, onClose }) {
   if (!modal) return null;
   return (
@@ -386,10 +356,6 @@ export function LegalDrawer({ modal, onClose }) {
     </>
   );
 }
-
-// ─── Profile tab ──────────────────────────────────────────────────────────────
-// userData: { name, cycleLength, periodLength, lastPeriodStart }
-// onSave: async ({ name, cycleLength, periodLength, lastPeriodStart }) => void
 
 export function ProfileTab({ phase, userData, onSave, onLegal, onSignOut }) {
   const p = phase || PHASES.luteal;
