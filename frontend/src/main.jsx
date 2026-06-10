@@ -50,7 +50,7 @@ function Splash({ onDone }) {
 
 function Root() {
   const [authState, setAuthState] = React.useState(null);
-  const [showSplash, setShowSplash] = React.useState(true);
+  const [splashDone, setSplashDone] = React.useState(false);
 
   const checkAuth = React.useCallback(() => {
     fetch('/api/auth/me')
@@ -69,8 +69,9 @@ function Root() {
     setAuthState('auth');
   };
 
-  if (showSplash) return <Splash onDone={() => setShowSplash(false)} />;
-  if (!authState) return null;
+  const showSplash = !splashDone || !authState;
+
+  if (showSplash) return <Splash onDone={() => setSplashDone(true)} />;
   if (authState === 'auth')       return <AuthScreen onAuth={checkAuth} />;
   if (authState === 'onboarding') return <OnboardingFlow onComplete={checkAuth} />;
   return <CirénApp onSignOut={handleSignOut} />;
