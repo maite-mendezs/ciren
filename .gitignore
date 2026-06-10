@@ -10,3 +10,4 @@ node_modules
 *.db
 backend/.en
 backend/.env.save
+.DS_Store
