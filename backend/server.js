@@ -34,5 +34,16 @@ app.delete('/api/reset-onboarding', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+
+const path = require('path');
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
 const PORT = process.env.PORT || 3001;
+
+// Catch-all: serve React app for any non-API route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
+
 app.listen(PORT, () => console.log(`cirén API → http://localhost:${PORT}`));
