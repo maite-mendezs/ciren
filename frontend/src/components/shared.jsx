@@ -99,29 +99,8 @@ export function StatusBar({ dark }) {
 
 // ─── Phone shell ──────────────────────────────────────────────────────────────
 
-export function PhoneShell({ children, phase }) {
-  const p = phase || PHASES.luteal;
-  return (
-    <div style={{
-      width:390, height:844, borderRadius:50,
-      background: G.stone,
-      border:'9px solid #1C1C1E',
-      outline:'1.5px solid #3A3A3C',
-      boxShadow:'0 50px 120px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.06)',
-      overflow:'hidden', display:'flex', flexDirection:'column',
-      fontFamily:'"DM Sans", sans-serif', color:G.ink,
-      position:'relative',
-    }}>
-      <div style={{ position:'absolute', top:11, left:'50%', transform:'translateX(-50%)', width:120, height:34, background:'#000', borderRadius:20, zIndex:10 }} aria-hidden="true"/>
-      <StatusBar />
-      <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column', position:'relative' }}>
-        {children}
-      </div>
-      <div style={{ height:30, display:'flex', alignItems:'center', justifyContent:'center', background:'transparent', flexShrink:0, zIndex:30, position:'relative' }}>
-        <div style={{ width:134, height:5, borderRadius:3, background:G.ink, opacity:.15 }}/>
-      </div>
-    </div>
-  );
+export function PhoneShell({ children }) {
+  return <>{children}</>;
 }
 
 // ─── Top bar (wordmark only) ──────────────────────────────────────────────────
