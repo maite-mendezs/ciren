@@ -12,7 +12,7 @@ app.set('trust proxy', 1);
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 
-const sessionDb = new Database('./sessions.db');
+const sessionDb = new Database(path.join(__dirname, 'sessions.db'));
 app.use(session({
   store: new SqliteStore({ client: sessionDb }),
   secret:            process.env.SESSION_SECRET || 'ciren-dev-secret',
@@ -32,13 +32,6 @@ app.use('/api/auth', require('./routes/auth'));
 // Protected routes
 app.use('/api/settings', requireAuth, require('./routes/settings'));
 app.use('/api/logs',     requireAuth, require('./routes/logs'));
-
-// DEV ONLY — remove before production
-const db = require('./db');
-app.delete('/api/reset-onboarding', requireAuth, (req, res) => {
-  db.prepare('UPDATE users SET is_onboarded = 0 WHERE id = 1').run();
-  res.json({ ok: true });
-});
 
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
