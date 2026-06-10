@@ -71,10 +71,14 @@ function Root() {
 
   const showSplash = !splashDone || !authState;
 
-  if (showSplash) return <Splash onDone={() => setSplashDone(true)} />;
-  if (authState === 'auth')       return <AuthScreen onAuth={checkAuth} />;
-  if (authState === 'onboarding') return <OnboardingFlow onComplete={checkAuth} />;
-  return <CirénApp onSignOut={handleSignOut} />;
+  return (
+    <>
+      {showSplash && <Splash onDone={() => setSplashDone(true)} />}
+      {!showSplash && authState === 'auth' && <AuthScreen onAuth={checkAuth} />}
+      {!showSplash && authState === 'onboarding' && <OnboardingFlow onComplete={checkAuth} />}
+      {!showSplash && authState === 'app' && <CirénApp onSignOut={handleSignOut} />}
+    </>
+  );
 }
 
 createRoot(document.getElementById('root')).render(
