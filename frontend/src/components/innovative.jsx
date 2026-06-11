@@ -3,7 +3,7 @@
 import React from 'react';
 import {
   PHASES, G, BRAND,
-  PetalMark, PhoneShell, BottomTabBar, CycleBar,
+  PetalMark, BottomTabBar, CycleBar,
   PrimaryBtn, SuccessState, ProfileTab, Toast, LegalDrawer,
 } from './shared';
 import * as api from '../api';
@@ -567,7 +567,7 @@ function DayLogDrawer({ drawer, phase, onClose, onLogSaved }) {
         <div style={{ padding:'12px 0 0', flexShrink:0 }}>
           <div style={{ width:36, height:4, borderRadius:2, background:G.line, margin:'0 auto' }}/>
         </div>
-        <div style={{ padding:'12px 20px 14px', borderBottom:`1px solid ${G.line}`, flexShrink:0 }}>
+        <div style={{ padding:'12px 20px 14px', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <div>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
@@ -612,34 +612,70 @@ function DayLogDrawer({ drawer, phase, onClose, onLogSaved }) {
 function InnoCalendar({ phase, userData, loggedDates, onLogSaved }) {
   const p = phase;
   const [drawer, setDrawer] = React.useState(null);
+  const [monthCount, setMonthCount] = React.useState(6);
+  const startOffset = -3;
+  const scrollRef = React.useRef(null);
   const DOW = ['S','M','T','W','T','F','S'];
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      const currentMonthEl = scrollRef.current.querySelector('[data-current-month]');
+      if (currentMonthEl) currentMonthEl.scrollIntoView({ block: 'start' });
+    }
+  }, []);
+
+  const handleScroll = React.useCallback((e) => {
+    const el = e.target;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
+      setMonthCount(prev => prev + 3);
+    }
+  }, []);
+
   const MONTH_DATA = React.useMemo(
-    () => buildMonthData(12, 0, userData.lastPeriodStart, userData.cycleLength),
-    [userData.lastPeriodStart, userData.cycleLength],
+    () => buildMonthData(monthCount, startOffset, userData.lastPeriodStart, userData.cycleLength),
+    [monthCount, userData.lastPeriodStart, userData.cycleLength],
   );
 
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:G.stone, position:'relative' }}>
-      <div style={{ flex:1, overflowX:'hidden', overflowY:'auto', padding:'0 24px 80px' }}>
-        <div style={{ padding:'28px 0 8px' }}>
-          <h2 style={{ fontFamily:'"Cormorant Garamond", serif', fontSize:28, fontWeight:400, color:G.ink, margin:'0 0 4px', letterSpacing:'-.01em' }}>Journal</h2>
-          <p style={{ fontSize:12, color:G.muted, margin:'0 0 14px' }}>Your logged days across the cycle</p>
-          <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
-            {Object.values(PHASES).map(ph=>(
-              <div key={ph.key} style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <div style={{ width:20, height:10, borderRadius:5, background:BAND_BG[ph.key] }}/>
-                <span style={{ fontSize:11, color:G.muted }}>{ph.name}</span>
-              </div>
-            ))}
-          </div>
+{/* Sticky header */}
+      <div style={{
+        flexShrink:0, display:'flex', flexDirection:'column',
+        padding:'16px 24px 12px', background:G.stone,
+      }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+          <span style={{ fontFamily:'"Cormorant Garamond", serif', fontSize:28, fontWeight:400, color:G.ink, letterSpacing:'-.01em' }}>Journal</span>
+          <button
+            onClick={() => {
+              const currentMonthEl = scrollRef.current?.querySelector('[data-current-month]');
+              if (currentMonthEl) currentMonthEl.scrollIntoView({ behavior:'smooth', block:'start' });
+            }}
+            style={{
+              height:30, padding:'0 14px', borderRadius:50,
+              border:`1px solid ${BRAND}`, background:'transparent',
+              color:BRAND, fontSize:12, fontWeight:500,
+              cursor:'pointer', fontFamily:'"DM Sans", sans-serif',
+            }}>
+            Today
+          </button>
         </div>
+        <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+          {Object.values(PHASES).map(ph=>(
+            <div key={ph.key} style={{ display:'flex', alignItems:'center', gap:5 }}>
+              <div style={{ width:8, height:8, borderRadius:'50%', background:BAND_BG[ph.key] }}/>
+              <span style={{ fontSize:11, color:G.muted }}>{ph.name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div ref={scrollRef} onScroll={handleScroll} style={{ flex:1, overflowX:'hidden', overflowY:'auto', padding:'0 24px 80px' }}>
 
         {MONTH_DATA.map((m) => (
-          <div key={`${m.year}-${m.month}`} style={{ marginBottom:32 }}>
+          <div key={`${m.year}-${m.month}`} data-current-month={m.year === new Date().getFullYear() && m.month === new Date().getMonth() ? true : undefined} style={{ marginBottom:32 }}>
             <div style={{ fontSize:11, fontWeight:500, letterSpacing:'.10em', textTransform:'uppercase', color:G.muted, marginBottom:12 }}>{m.name} {m.year}</div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom:4 }}>
               {DOW.map((d,i)=><div key={i} style={{ textAlign:'center', fontSize:10, fontWeight:500, letterSpacing:'.06em', color:G.muted, paddingBottom:4 }}>{d}</div>)}
@@ -656,7 +692,6 @@ function InnoCalendar({ phase, userData, loggedDates, onLogSaved }) {
                 const dateStr  = `${m.year}-${String(m.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
                 const isLogged = loggedDates.has(dateStr);
 
-                // Band cap logic — breaks at row boundaries (week wrap) and month edges
                 const dayOfWeek    = (m.startDow + i) % 7;
                 const isFirstInRow = dayOfWeek === 0 || i === 0;
                 const isLastInRow  = dayOfWeek === 6 || i === m.days - 1;
@@ -686,21 +721,18 @@ function InnoCalendar({ phase, userData, loggedDates, onLogSaved }) {
                       position:'relative', fontFamily:'"DM Sans", sans-serif',
                     }}
                   >
-                    {/* Phase band */}
                     <div style={{
                       position:'absolute', inset:0,
                       background: BAND_BG[ph.key],
                       borderRadius: bandRadius,
                       opacity: isPast && !isToday ? 0.6 : 1,
                     }}/>
-                    {/* Today circle — solid #6B5A8A over the band */}
                     {isToday && (
                       <div style={{
                         position:'absolute', width:28, height:28, borderRadius:'50%',
                         background:'#6B5A8A', zIndex:1,
                       }}/>
                     )}
-                    {/* Day number */}
                     <span style={{
                       position:'relative', zIndex:2,
                       fontSize:12, lineHeight:1,
@@ -709,7 +741,6 @@ function InnoCalendar({ phase, userData, loggedDates, onLogSaved }) {
                     }}>
                       {day}
                     </span>
-                    {/* Logged dot */}
                     {isLogged && !isToday && (
                       <div style={{
                         position:'absolute', bottom:3, left:'50%',
@@ -730,7 +761,6 @@ function InnoCalendar({ phase, userData, loggedDates, onLogSaved }) {
     </div>
   );
 }
-
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
 function InnoProfile({ phase, userData, onSave, onLegal, onSignOut }) {
@@ -792,7 +822,7 @@ function InnoLogDrawer({ phase, today, onClose, onLogSaved, onShowToast }) {
     <>
       <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(30,20,15,.3)', zIndex:10 }} aria-hidden="true"/>
       <div role="dialog" aria-modal="true" style={{ position:'absolute', bottom:0, left:0, right:0, top:'10%', background:G.stone, borderRadius:'20px 20px 0 0', boxShadow:'0 -8px 40px rgba(0,0,0,.12)', zIndex:20, display:'flex', flexDirection:'column' }}>
-        <div style={{ padding:'12px 20px 14px', borderBottom:`1px solid ${G.line}`, flexShrink:0 }}>
+        <div style={{ padding:'12px 20px 14px', flexShrink:0 }}>
           <div style={{ width:36, height:4, borderRadius:2, background:G.line, margin:'0 auto 16px' }}/>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <div style={{ fontFamily:'"Cormorant Garamond", serif', fontSize:22, fontWeight:400, color:G.ink }}>Log today</div>
@@ -848,11 +878,9 @@ export function CirénApp({ onSignOut }) {
 
   if (!userData) {
     return (
-      <PhoneShell>
-        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <PetalMark size={40} color={G.muted}/>
-        </div>
-      </PhoneShell>
+      <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <PetalMark size={40}/>
+      </div>
     );
   }
 
@@ -871,17 +899,15 @@ export function CirénApp({ onSignOut }) {
     showToast('Settings saved');
   };
 
-  return (
-    <PhoneShell phase={p}>
-      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
-        {tab === 'home'     && <InnoHome     phase={p} userData={userData} onTab={handleTab} onLogSymptoms={handleLogSymptoms} todayLog={todayLog}/>}
-        {tab === 'calendar' && <InnoCalendar phase={p} userData={userData} loggedDates={loggedDates} onLogSaved={loadData}/>}
-        {tab === 'profile'  && <InnoProfile  phase={p} userData={userData} onSave={handleSaveSettings} onLegal={setLegalModal} onSignOut={onSignOut}/>}
-        {logOpen && <InnoLogDrawer phase={p} today={today} onClose={() => setLogOpen(false)} onLogSaved={loadData} onShowToast={showToast}/>}
-        <LegalDrawer modal={legalModal} onClose={() => setLegalModal(null)}/>
-        {toast && <Toast message={toast} onDone={() => setToast(null)}/>}
-        <BottomTabBar active={tab} onTab={handleTab} phase={p}/>
-      </div>
-    </PhoneShell>
+return (
+    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', height:'100%' }}>
+      {tab === 'home'     && <InnoHome     phase={p} userData={userData} onTab={handleTab} onLogSymptoms={handleLogSymptoms} todayLog={todayLog}/>}
+      {tab === 'calendar' && <InnoCalendar phase={p} userData={userData} loggedDates={loggedDates} onLogSaved={loadData}/>}
+      {tab === 'profile'  && <InnoProfile  phase={p} userData={userData} onSave={handleSaveSettings} onLegal={setLegalModal} onSignOut={onSignOut}/>}
+      {logOpen && <InnoLogDrawer phase={p} today={today} onClose={() => setLogOpen(false)} onLogSaved={loadData} onShowToast={showToast}/>}
+      <LegalDrawer modal={legalModal} onClose={() => setLegalModal(null)}/>
+      {toast && <Toast message={toast} onDone={() => setToast(null)}/>}
+      <BottomTabBar active={tab} onTab={handleTab} phase={p}/>
+    </div>
   );
 }
