@@ -74,9 +74,9 @@ function Root() {
   return (
     <>
       {showSplash && <Splash onDone={() => setSplashDone(true)} />}
-      {!showSplash && authState === 'auth' && <AuthScreen onAuth={checkAuth} />}
+      {!showSplash && authState === 'auth'       && <AuthScreen onAuth={checkAuth} />}
       {!showSplash && authState === 'onboarding' && <OnboardingFlow onComplete={checkAuth} />}
-      {!showSplash && authState === 'app' && <CirénApp onSignOut={handleSignOut} />}
+      {!showSplash && authState === 'app'        && <CirénApp onSignOut={handleSignOut} />}
     </>
   );
 }

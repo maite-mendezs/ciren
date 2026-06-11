@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { PHASES, G, BRAND, PrimaryBtn } from './shared';
 import { saveSettings } from '../api';
 
@@ -53,50 +53,10 @@ function Stepper({ val, min, max, onChange }) {
   );
 }
 
-function Splash({ onDone }) {
-  const [fadingOut, setFadingOut] = React.useState(false);
-  useEffect(() => {
-    const fadeTimer = setTimeout(() => setFadingOut(true), 2500);
-    const doneTimer = setTimeout(onDone, 2900);
-    return () => { clearTimeout(fadeTimer); clearTimeout(doneTimer); };
-  }, [onDone]);
-  return (
-    <>
-      <style>{`
-        @keyframes ob-pulse {
-          0%, 100% { transform: scale(1); }
-          50%       { transform: scale(1.08); }
-        }
-        @keyframes ob-fade-up {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-      <div style={{
-        flex:1, display:'flex', flexDirection:'column',
-        alignItems:'center', justifyContent:'center', gap:18,
-        background: '#ECEAF3',
-        opacity: fadingOut ? 0 : 1,
-        transition: 'opacity .4s ease',
-        minHeight: '100dvh',
-      }}>
-        <img src="/logo.png" alt="cirén logo"
-          style={{ width:80, height:80, objectFit:'contain', animation:'ob-pulse 2s ease-in-out infinite' }}
-        />
-        <div style={{
-          fontSize:26, fontWeight:300, letterSpacing:'.08em', color:'#2E2248',
-          fontFamily:SANS, opacity:0,
-          animation:'ob-fade-up .5s ease forwards .3s',
-        }}>cirén</div>
-      </div>
-    </>
-  );
-}
-
 function NameScreen({ name, setName, onNext }) {
   const canContinue = name.trim().length > 0;
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', background:G.stone, minHeight:'100dvh' }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', background:G.stone }}>
       <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 28px' }}>
         <div style={{ fontSize:28, fontWeight:300, color:G.ink, fontFamily:SERIF, letterSpacing:'.01em', marginBottom:10 }}>
           What's your name?
@@ -143,7 +103,7 @@ function CycleData({ lastPeriodStart, setLastPeriodStart, cycleLength, setCycleL
   );
 
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', background:'#fff', minHeight:'100dvh' }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', background:'#fff' }}>
       <div style={{ flex:1, overflowX:'hidden', overflowY:'auto', padding:'20px 24px 0' }}>
         <BackBtn onBack={onBack}/>
         <div style={{ fontSize:26, fontWeight:300, color:G.ink, fontFamily:SERIF, letterSpacing:'.01em', marginBottom:28 }}>
@@ -151,19 +111,23 @@ function CycleData({ lastPeriodStart, setLastPeriodStart, cycleLength, setCycleL
         </div>
         <div style={{ padding:'18px 0', borderBottom:`1px solid ${G.line}` }}>
           <div style={{ fontSize:15, color:G.ink, fontFamily:SANS, marginBottom:10 }}>My last period started</div>
-          <input
-            type="date"
-            value={lastPeriodStart}
-            max={today()}
-            onChange={e => setLastPeriodStart(e.target.value)}
-            style={{
-              height:44, width:'100%', borderRadius:10, padding:'0 14px',
-              border:`1.5px solid ${lastPeriodStart ? BRAND : G.line}`,
-              fontSize:14, fontFamily:SANS, color:G.ink,
-              background:G.stone, outline:'none', boxSizing:'border-box',
-              transition:'border-color .2s',
-            }}
-          />
+          <div style={{ display:'flex', alignItems:'center' }}>
+            <input
+              type="date"
+              value={lastPeriodStart}
+              max={today()}
+              onChange={e => setLastPeriodStart(e.target.value)}
+              style={{
+                height:44, width:'auto', maxWidth:220, minWidth:160,
+                borderRadius:10, padding:'0 14px',
+                border:`1.5px solid ${lastPeriodStart ? BRAND : G.line}`,
+                fontSize:16, fontFamily:SANS, color:G.ink,
+                background:G.stone, outline:'none', boxSizing:'border-box',
+                WebkitAppearance:'none', appearance:'none',
+                transition:'border-color .2s',
+              }}
+            />
+          </div>
         </div>
         <StepperRow label="My cycle usually lasts"  val={cycleLength}  min={21} max={45} onChange={setCycleLength}  suffix="days"/>
         <StepperRow label="My period usually lasts" val={periodLength} min={2}  max={10} onChange={setPeriodLength} suffix="days"/>
@@ -186,7 +150,7 @@ function CycleData({ lastPeriodStart, setLastPeriodStart, cycleLength, setCycleL
 }
 
 export function OnboardingFlow({ onComplete }) {
-  const [screen, setScreen]                   = useState(0);
+  const [screen, setScreen]                   = useState(1);
   const [name, setName]                       = useState('');
   const [lastPeriodStart, setLastPeriodStart] = useState('');
   const [cycleLength, setCycleLength]         = useState(28);
@@ -215,9 +179,7 @@ export function OnboardingFlow({ onComplete }) {
   }
 
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:'100dvh' }}>
-      {screen === 0 && <Splash onDone={() => setScreen(1)} />}
-
+    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
       {screen >= 1 && (
         <div style={{ flexShrink:0, paddingTop:8 }}>
           <Dots total={2} current={screen - 1} />

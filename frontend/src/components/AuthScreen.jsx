@@ -42,8 +42,7 @@ export function AuthScreen({ onAuth }) {
   const [mode, setMode] = useState('home');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [error, setError] = useState('');
+const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleGoogle = () => { window.location.href = '/api/auth/google'; };
@@ -53,7 +52,7 @@ export function AuthScreen({ onAuth }) {
     setLoading(true);
     try {
       const endpoint = mode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
-      const body = mode === 'signup' ? { email, password, name } : { email, password };
+      const body = { email, password };
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -72,7 +71,7 @@ export function AuthScreen({ onAuth }) {
   };
 
   if (mode === 'home') return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', background:G.stone, minHeight:'100dvh' }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', background:G.stone }}>
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', paddingTop:64, gap:12 }}>
         <img src="/logo.png" alt="ciren" style={{ width:52, height:52, objectFit:'contain' }}/>
         <span style={{ fontSize:20, fontWeight:300, letterSpacing:'.10em', color:PURPLE, fontFamily:SANS }}>ciren</span>
@@ -97,7 +96,7 @@ export function AuthScreen({ onAuth }) {
   );
 
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', background:G.stone, minHeight:'100dvh' }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', background:G.stone }}>
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', paddingTop:56, gap:12 }}>
         <img src="/logo.png" alt="ciren" style={{ width:40, height:40, objectFit:'contain' }}/>
         <span style={{ fontSize:18, fontWeight:300, letterSpacing:'.10em', color:PURPLE, fontFamily:SANS }}>ciren</span>
@@ -107,10 +106,7 @@ export function AuthScreen({ onAuth }) {
           {mode === 'signup' ? 'Create your account' : 'Welcome back'}
         </h2>
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {mode === 'signup' && (
-            <input style={inputStyle} type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)}/>
-          )}
-          <input style={inputStyle} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)}/>
+<input style={inputStyle} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)}/>
           <input style={inputStyle} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()}/>
           {error && <p style={{ color:'#c0392b', fontSize:13, margin:0, fontFamily:SANS, textAlign:'center' }}>{error}</p>}
           <button onClick={handleSubmit} disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.7 : 1, marginTop:4 }}>

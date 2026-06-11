@@ -19,14 +19,52 @@ function getPhaseForDay(cycleDay, cycleLength, periodLength) {
   return PHASES.luteal;
 }
 
-function computeCycleState(settings) {
+function computeCycleState(settings, logs = []) {
   const { name, cycleLength, periodLength, lastPeriodStart } = settings;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const start = new Date(lastPeriodStart + 'T00:00:00');
+
+  // Find the most recent period start from logged flow data.
+  // Collect all days where flow was Light, Medium, or Heavy, then find
+  // the first day of the most recent consecutive sequence.
+  const FLOW_DAYS = new Set(
+    logs.filter(l => l.flow === 'Light' || l.flow === 'Medium' || l.flow === 'Heavy')
+        .map(l => l.date)
+  );
+  let logDerivedStart = null;
+  if (FLOW_DAYS.size > 0) {
+    const sorted = [...FLOW_DAYS].sort().reverse(); // most recent first
+    let seqStart = sorted[0];
+    for (let i = 1; i < sorted.length; i++) {
+      const prev = new Date(sorted[i - 1] + 'T00:00:00');
+      const curr = new Date(sorted[i]     + 'T00:00:00');
+      if (Math.round((prev - curr) / 86400000) === 1) {
+        seqStart = sorted[i]; // extend sequence backward
+      } else {
+        break; // gap — sequence starts at seqStart
+      }
+    }
+    logDerivedStart = seqStart;
+  }
+
+  // Use the more recent of lastPeriodStart (settings) and logDerivedStart (logs).
+  const settingsDate = lastPeriodStart ? new Date(lastPeriodStart + 'T00:00:00') : null;
+  const logDate      = logDerivedStart  ? new Date(logDerivedStart  + 'T00:00:00') : null;
+  const effectiveStart = (logDate && (!settingsDate || logDate > settingsDate))
+    ? logDerivedStart
+    : lastPeriodStart;
+
+  const start    = new Date(effectiveStart + 'T00:00:00');
   const diffDays = Math.round((today - start) / 86400000);
-  const cycleDay = (diffDays % cycleLength) + 1;
-  const daysToPeriod = cycleLength - cycleDay + 1;
+
+  // If no new period has been detected in logs and we've passed the predicted
+  // cycle length, extend the count rather than wrapping back to day 1.
+  const loggedNewPeriod = logDate && settingsDate && logDate > settingsDate;
+  const cycleDay = (!loggedNewPeriod && diffDays >= cycleLength)
+    ? diffDays + 1
+    : (diffDays % cycleLength) + 1;
+
+  const daysToPeriod = Math.max(0, cycleLength - cycleDay + 1);
   const phase = getPhaseForDay(cycleDay, cycleLength, periodLength);
   return { name, cycleLength, periodLength, lastPeriodStart, cycleDay, daysToPeriod, phase };
 }
@@ -271,36 +309,71 @@ const SLEEP_TIPS = {
   'Great':     'Great sleep is a foundation for everything else. Note what you did differently.',
 };
 
-function getPersonalizedTip(k, todayLog, phaseKey) {
-  if (!todayLog) return null;
+function getPersonalizedTip(k, todayLog, phaseKey, allLogs, userData) {
+  // Returns the most frequent value across all historical logs for the same phase,
+  // falling back to today's log if no history exists, then null.
+  function topValue(arr) {
+    if (!arr || arr.length === 0) return null;
+    const counts = {};
+    for (const v of arr) counts[v] = (counts[v] || 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+  }
+
+  // Filter historical logs to those that fell in the same phase as today.
+  // Uses lastPeriodStart as modulo anchor to approximate historical cycle days.
+  const phaseLogs = (allLogs?.length && userData?.lastPeriodStart)
+    ? allLogs.filter(log => {
+        const diff = Math.round(
+          (new Date(log.date + 'T00:00:00') - new Date(userData.lastPeriodStart + 'T00:00:00')) / 86400000
+        );
+        const cycleDay = ((diff % userData.cycleLength) + userData.cycleLength) % userData.cycleLength + 1;
+        return getPhaseForDay(cycleDay, userData.cycleLength, userData.periodLength).key === phaseKey;
+      })
+    : [];
+
   if (k === 'Food') {
-    const found = todayLog.cravings?.find(c => FOOD_TIPS[c]);
+    const top = topValue(phaseLogs.flatMap(l => l.cravings || []).filter(c => FOOD_TIPS[c]));
+    if (top) return FOOD_TIPS[top];
+    const found = todayLog?.cravings?.find(c => FOOD_TIPS[c]);
     return found ? FOOD_TIPS[found] : null;
   }
   if (k === 'Mood') {
-    const found = todayLog.mood?.find(m => MOOD_TIPS[m]);
+    const top = topValue(phaseLogs.flatMap(l => l.mood || []).filter(m => MOOD_TIPS[m]));
+    if (top) return MOOD_TIPS[top];
+    const found = todayLog?.mood?.find(m => MOOD_TIPS[m]);
     return found ? MOOD_TIPS[found] : null;
   }
   if (k === 'Mind') {
-    const found = todayLog.mind?.find(m => MIND_TIPS[m]);
+    const top = topValue(phaseLogs.flatMap(l => l.mind || []).filter(m => MIND_TIPS[m]));
+    if (top) return MIND_TIPS[top];
+    const found = todayLog?.mind?.find(m => MIND_TIPS[m]);
     return found ? MIND_TIPS[found] : null;
   }
   if (k === 'Move') {
-    const found = todayLog.movement?.find(m => MOVE_TIPS[m]);
+    const top = topValue(phaseLogs.flatMap(l => l.movement || []).filter(m => MOVE_TIPS[m]));
+    if (top) { const t = MOVE_TIPS[top]; return typeof t === 'object' ? t[phaseKey] ?? null : t; }
+    const found = todayLog?.movement?.find(m => MOVE_TIPS[m]);
     if (!found) return null;
-    const tip = MOVE_TIPS[found];
-    return typeof tip === 'object' ? tip[phaseKey] ?? null : tip;
+    const t = MOVE_TIPS[found];
+    return typeof t === 'object' ? t[phaseKey] ?? null : t;
   }
   if (k === 'Sleep') {
-    return todayLog.sleep ? SLEEP_TIPS[todayLog.sleep] ?? null : null;
+    const top = topValue(phaseLogs.map(l => l.sleep).filter(s => s && SLEEP_TIPS[s]));
+    if (top) return SLEEP_TIPS[top];
+    return todayLog?.sleep ? SLEEP_TIPS[todayLog.sleep] ?? null : null;
   }
   return null;
 }
 
 
-function InnoHome({ phase, userData, onTab, onLogSymptoms, todayLog }) {
+function InnoHome({ phase, userData, onTab, onLogSymptoms, todayLog, allLogs }) {
   const p = phase;
   const pill = PILL[p.key];
+  const scrollRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, []);
 
   // Empty state — no period date set
   if (!userData.lastPeriodStart) {
@@ -315,8 +388,7 @@ function InnoHome({ phase, userData, onTab, onLogSymptoms, todayLog }) {
   }
 
   const insight = PHASE_INSIGHTS[p.key][getPhasePosition(userData)];
-  const loggedSymptoms = todayLog?.symptoms?.length > 0 ? todayLog.symptoms : null;
-  const getTip = (k) => getPersonalizedTip(k, todayLog, p.key);
+  const getTip = (k) => getPersonalizedTip(k, todayLog, p.key, allLogs, userData);
 
   // Stale date banner — last period > 180 days ago
   const daysSinceLastPeriod = Math.floor((Date.now() - new Date(userData.lastPeriodStart + 'T00:00:00')) / 86400000);
@@ -324,10 +396,10 @@ function InnoHome({ phase, userData, onTab, onLogSymptoms, todayLog }) {
   const [bannerDismissed, setBannerDismissed] = React.useState(false);
 
   return (
-    <div ref={el => { if (el) el.scrollTop = 0; }} style={{ flex:1, overflowX:'hidden', overflowY:'auto', background:'#FAFAF8' }}>
+    <div ref={scrollRef} style={{ flex:1, overflowX:'hidden', overflowY:'auto', background:'#FAFAF8' }}>
 
       {/* Hero */}
-      <div style={{ padding:'32px 28px 28px' }}>
+      <div style={{ padding:'calc(32px + env(safe-area-inset-top, 0px)) 28px 28px' }}>
         <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'0 12px 0 10px', height:28, borderRadius:14, background:pill.bg, border:`1px solid ${pill.accent}55`, marginBottom:20 }}>
           <div style={{ width:6, height:6, borderRadius:'50%', background:pill.accent, flexShrink:0 }}/>
           <span style={{ fontSize:11, fontWeight:500, letterSpacing:'.10em', textTransform:'uppercase', color:pill.text, fontFamily:'"DM Sans", sans-serif' }}>
@@ -358,11 +430,6 @@ function InnoHome({ phase, userData, onTab, onLogSymptoms, todayLog }) {
 
       {/* Guidance card — plain div, scrolls with the page */}
       <div style={{ background:'#fff', borderRadius:'36px 36px 0 0', padding:'28px 28px 32px', boxShadow:'0 -2px 8px rgba(0,0,0,0.05)' }}>
-        {loggedSymptoms && (
-          <div style={{ fontSize:11, color:'#6C6C70', marginBottom:16, fontFamily:'"DM Sans", sans-serif' }}>
-            Logged today: {loggedSymptoms.map(s => s.toLowerCase()).join(', ')}
-          </div>
-        )}
         <div style={{ fontSize:10, fontWeight:500, letterSpacing:'.14em', textTransform:'uppercase', color:G.muted, marginBottom:20 }}>Today</div>
         {insight.guidance.map((row, i, arr) => {
           const tip = getTip(row.k);
@@ -478,7 +545,7 @@ function InnoLog({ phase, today, onTab, onLogSaved }) {
       </div>
       <div style={{ flex:1, overflowX:'hidden', overflowY:'auto', padding:'12px 16px 0' }}>
         <LogCardBase label="Period Flow">
-          <ChipRow section="flow" single items={[['None',null],['Light',null],['Medium',null],['Heavy',null]]}/>
+          <ChipRow section="flow" single items={[['Light',null],['Medium',null],['Heavy',null]]}/>
         </LogCardBase>
         <LogCardBase label="Cravings">
           <ChipRow section="cravings" items={[['Sweet','🍬'],['Salty','🧂'],['Carbs','🍞'],['Chocolate','🍫'],['Comfort food','🍲'],['No appetite','😶'],['Increased appetite','🍽️']]}/>
@@ -536,12 +603,11 @@ function DayLogDrawer({ drawer, phase, onClose, onLogSaved }) {
   const p = phase;
   const ph = drawer.phase;
   const [sel, toggle] = useLogForm(ph, drawer.dateStr);
-  const [saved, setSaved] = React.useState(false);
 
   const handleSave = async () => {
     await api.saveLog(drawer.dateStr, sel);
     onLogSaved?.();
-    setSaved(true);
+    onClose();
   };
 
   const LogChip = ({ section, val, emoji, single }) => (
@@ -580,28 +646,19 @@ function DayLogDrawer({ drawer, phase, onClose, onLogSaved }) {
           </div>
         </div>
 
-        {saved
-          ? <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'0 28px', textAlign:'center' }}>
-              <PetalMark size={40} style={{ marginBottom:16 }}/>
-              <div style={{ fontFamily:'"Cormorant Garamond", serif', fontSize:22, fontWeight:400, color:G.ink, marginBottom:8 }}>Saved.</div>
-              <button onClick={onClose} style={{ marginTop:16, height:46, padding:'0 36px', borderRadius:50, border:'none', background:BRAND, color:'#fff', fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'"DM Sans", sans-serif' }}>Done</button>
+        <div style={{ flex:1, overflowX:'hidden', overflowY:'auto', padding:'12px 14px 0' }}>
+              <LogCard label="Period Flow"><ChipRow section="flow" single items={[['Light',null],['Medium',null],['Heavy',null]]}/></LogCard>
+              <LogCard label="Cravings"><ChipRow section="cravings" items={[['Sweet','🍬'],['Salty','🧂'],['Carbs','🍞'],['Chocolate','🍫'],['Comfort food','🍲'],['No appetite','😶'],['Increased appetite','🍽️']]}/></LogCard>
+              <LogCard label="Mood"><ChipRow section="mood" items={[['Calm','🌸'],['Happy','☀️'],['Energetic','⚡'],['Irritated','😤'],['Sad','🌧️'],['Anxious','🌀'],['Low energy','🪫'],['Apathetic','🩶'],['Frisky','🔥'],['Mood swings','🎢']]}/></LogCard>
+              <LogCard label="Mind"><ChipRow section="mind" items={[['Focused','🎯'],['Clear','💎'],['Creative','💡'],['Foggy','🌫️'],['Overwhelmed','🌊'],['Scattered','🌪️'],['Indecisive','🤔'],['Sharp','⚡']]}/></LogCard>
+              <LogCard label="Symptoms"><ChipRow section="symptoms" items={[['Cramps','🌀'],['Tender breasts','🍒'],['Headache','🤕'],['Backache','🪨'],['Fatigue','😴'],['Hot flashes','🔥'],['Night sweats','💧'],['Bloating','🫧']]}/></LogCard>
+              <LogCard label="Movement"><ChipRow section="movement" items={[['Rest','🧖'],['Light','🚶'],['Moderate','🧘'],['Intense','🏋️']]}/></LogCard>
+              <LogCard label="Sleep"><ChipRow section="sleep" single items={[['Great','⭐'],['Good','✅'],['Disrupted','😵'],['Poor','😔']]}/></LogCard>
+              <div style={{ height:10 }}/>
             </div>
-          : <>
-              <div style={{ flex:1, overflowX:'hidden', overflowY:'auto', padding:'12px 14px 0' }}>
-                <LogCard label="Period Flow"><ChipRow section="flow" single items={[['None',null],['Light',null],['Medium',null],['Heavy',null]]}/></LogCard>
-                <LogCard label="Cravings"><ChipRow section="cravings" items={[['Sweet','🍬'],['Salty','🧂'],['Carbs','🍞'],['Chocolate','🍫'],['Comfort food','🍲'],['No appetite','😶'],['Increased appetite','🍽️']]}/></LogCard>
-                <LogCard label="Mood"><ChipRow section="mood" items={[['Calm','🌸'],['Happy','☀️'],['Energetic','⚡'],['Irritated','😤'],['Sad','🌧️'],['Anxious','🌀'],['Low energy','🪫'],['Apathetic','🩶'],['Frisky','🔥'],['Mood swings','🎢']]}/></LogCard>
-                <LogCard label="Mind"><ChipRow section="mind" items={[['Focused','🎯'],['Clear','💎'],['Creative','💡'],['Foggy','🌫️'],['Overwhelmed','🌊'],['Scattered','🌪️'],['Indecisive','🤔'],['Sharp','⚡']]}/></LogCard>
-                <LogCard label="Symptoms"><ChipRow section="symptoms" items={[['Cramps','🌀'],['Tender breasts','🍒'],['Headache','🤕'],['Backache','🪨'],['Fatigue','😴'],['Hot flashes','🔥'],['Night sweats','💧'],['Bloating','🫧']]}/></LogCard>
-                <LogCard label="Movement"><ChipRow section="movement" items={[['Rest','🧖'],['Light','🚶'],['Moderate','🧘'],['Intense','🏋️']]}/></LogCard>
-                <LogCard label="Sleep"><ChipRow section="sleep" single items={[['Great','⭐'],['Good','✅'],['Disrupted','😵'],['Poor','😔']]}/></LogCard>
-                <div style={{ height:10 }}/>
-              </div>
-              <div style={{ padding:'12px 20px 4px', borderTop:`1px solid ${G.line}`, flexShrink:0 }}>
-                <PrimaryBtn phase={ph} onClick={handleSave}>Save log</PrimaryBtn>
-              </div>
-            </>
-        }
+            <div style={{ padding:'12px 20px 4px', borderTop:`1px solid ${G.line}`, flexShrink:0 }}>
+              <PrimaryBtn phase={ph} onClick={handleSave}>Save log</PrimaryBtn>
+            </div>
       </div>
     </>
   );
@@ -672,7 +729,7 @@ function InnoCalendar({ phase, userData, loggedDates, onLogSaved }) {
         </div>
       </div>
 
-      <div ref={scrollRef} onScroll={handleScroll} style={{ flex:1, overflowX:'hidden', overflowY:'auto', padding:'0 24px 80px' }}>
+      <div ref={scrollRef} onScroll={handleScroll} style={{ flex:1, overflowX:'hidden', overflowY:'auto', padding:'0 24px 20px' }}>
 
         {MONTH_DATA.map((m) => (
           <div key={`${m.year}-${m.month}`} data-current-month={m.year === new Date().getFullYear() && m.month === new Date().getMonth() ? true : undefined} style={{ marginBottom:32 }}>
@@ -766,7 +823,7 @@ function InnoCalendar({ phase, userData, loggedDates, onLogSaved }) {
 function InnoProfile({ phase, userData, onSave, onLegal, onSignOut }) {
   const p = phase;
   return (
-    <div style={{ flex:1, overflowX:'hidden', overflowY:'auto', background:G.stone }}>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:G.stone }}>
       <div style={{ padding:'28px 24px 0' }}>
         <h2 style={{ fontFamily:'"Cormorant Garamond", serif', fontSize:28, fontWeight:400, color:G.ink, margin:'0 0 20px', letterSpacing:'-.01em' }}>Account</h2>
       </div>
@@ -775,7 +832,7 @@ function InnoProfile({ phase, userData, onSave, onLegal, onSignOut }) {
       {import.meta.env.DEV && (
         <div style={{ padding:'16px 20px 32px' }}>
           <button
-            onClick={async () => { await fetch('/api/reset-onboarding', { method:'DELETE' }); window.location.reload(); }}
+            onClick={async () => { await fetch('/api/settings', { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify({ isOnboarded: false }) }); window.location.reload(); }}
             style={{ width:'100%', padding:'12px 0', borderRadius:10, border:'1.5px dashed #EFEFEF', background:'transparent', color:G.muted, fontSize:13, cursor:'pointer', fontFamily:'"DM Sans", sans-serif' }}>
             Reset onboarding
           </button>
@@ -831,7 +888,7 @@ function InnoLogDrawer({ phase, today, onClose, onLogSaved, onShowToast }) {
         </div>
 
         <div ref={scrollRef} style={{ flex:1, overflowX:'hidden', overflowY:'auto', padding:'12px 16px 0' }}>
-            <LogCard label="Period Flow"><ChipRow section="flow" single items={[['None',null],['Light',null],['Medium',null],['Heavy',null]]}/></LogCard>
+            <LogCard label="Period Flow"><ChipRow section="flow" single items={[['Light',null],['Medium',null],['Heavy',null]]}/></LogCard>
             <LogCard label="Cravings"><ChipRow section="cravings" items={[['Sweet','🍬'],['Salty','🧂'],['Carbs','🍞'],['Chocolate','🍫'],['Comfort food','🍲'],['No appetite','😶'],['Increased appetite','🍽️']]}/></LogCard>
             <LogCard label="Mood"><ChipRow section="mood" items={[['Calm','🌸'],['Happy','☀️'],['Energetic','⚡'],['Irritated','😤'],['Sad','🌧️'],['Anxious','🌀'],['Low energy','🪫'],['Apathetic','🩶'],['Frisky','🔥'],['Mood swings','🎢']]}/></LogCard>
             <LogCard label="Mind"><ChipRow section="mind" items={[['Focused','🎯'],['Clear','💎'],['Creative','💡'],['Foggy','🌫️'],['Overwhelmed','🌊'],['Scattered','🌪️'],['Indecisive','🤔'],['Sharp','⚡']]}/></LogCard>
@@ -855,6 +912,7 @@ export function CirénApp({ onSignOut }) {
   const [logOpen, setLogOpen] = React.useState(false);
   const [userData, setUserData] = React.useState(null);
   const [loggedDates, setLoggedDates] = React.useState(new Set());
+  const [allLogs, setAllLogs] = React.useState([]);
   const [todayLog, setTodayLog] = React.useState(null);
   const [toast, setToast] = React.useState(null);
   const [legalModal, setLegalModal] = React.useState(null);
@@ -868,8 +926,9 @@ export function CirénApp({ onSignOut }) {
       api.getLogs(),
       api.getLog(new Date().toISOString().slice(0, 10)),
     ]).then(([settings, logs, todayLogData]) => {
-      setUserData(computeCycleState(settings));
+      setUserData(computeCycleState(settings, logs));
       setLoggedDates(new Set(logs.map(l => l.date)));
+      setAllLogs(logs);
       setTodayLog(todayLogData);
     });
   }, []);
@@ -900,8 +959,8 @@ export function CirénApp({ onSignOut }) {
   };
 
 return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', height:'100%' }}>
-      {tab === 'home'     && <InnoHome     phase={p} userData={userData} onTab={handleTab} onLogSymptoms={handleLogSymptoms} todayLog={todayLog}/>}
+    <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
+      {tab === 'home'     && <InnoHome     phase={p} userData={userData} onTab={handleTab} onLogSymptoms={handleLogSymptoms} todayLog={todayLog} allLogs={allLogs}/>}
       {tab === 'calendar' && <InnoCalendar phase={p} userData={userData} loggedDates={loggedDates} onLogSaved={loadData}/>}
       {tab === 'profile'  && <InnoProfile  phase={p} userData={userData} onSave={handleSaveSettings} onLegal={setLegalModal} onSignOut={onSignOut}/>}
       {logOpen && <InnoLogDrawer phase={p} today={today} onClose={() => setLogOpen(false)} onLogSaved={loadData} onShowToast={showToast}/>}

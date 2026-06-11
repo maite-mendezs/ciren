@@ -126,10 +126,12 @@ export function BottomTabBar({ active, onTab, phase }) {
 
   return (
     <div style={{
-      flexShrink:0, height:60, display:'flex',
+      flexShrink:0,
+      height:'calc(60px + env(safe-area-inset-bottom, 0px))',
+      paddingBottom:'env(safe-area-inset-bottom, 0px)',
+      display:'flex',
       background:'#fff',
       borderTop:`1px solid ${G.line}`,
-      paddingBottom:'env(safe-area-inset-bottom, 0px)',
     }}>
       <TabBtn tabKey="home" label="Home" icon={c => (
         <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
@@ -383,7 +385,7 @@ export function ProfileTab({ phase, userData, onSave, onLegal, onSignOut }) {
   );
 
   return (
-    <div style={{ flex:1, overflowX:'hidden', overflowY:'auto', padding:'0 20px 20px', background:G.stone }}>
+    <div style={{ flex:1, height:'100%', overflowX:'hidden', overflowY:'auto', padding:'0 20px 20px', background:G.stone }}>
       <h2 style={{ fontSize:13, fontWeight:500, letterSpacing:'.10em', textTransform:'uppercase', color:G.muted, margin:'24px 0 20px' }}>Your profile</h2>
 
       <Card phase={p} style={{ marginBottom:12 }}>
