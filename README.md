@@ -14,13 +14,17 @@ ciren/
 │   ├── public/        Static assets (logo.png)
 │   └── src/
 │       ├── components/
-│       │   ├── AuthScreen.jsx
-│       │   ├── Onboarding.jsx
-│       │   ├── innovative.jsx   main app shell + all tabs
-│       │   └── shared.jsx       design system + shared components
+│       │   ├── AuthScreen.jsx   login + signup screens
+│       │   ├── Onboarding.jsx   first-run onboarding flow
+│       │   ├── innovative.jsx   main app shell (CirénApp), all tab components
+│       │   │                    (InnoHome, InnoCalendar, InnoProfile, InnoLog,
+│       │   │                    InnoLogDrawer, DayLogDrawer), cycle state logic,
+│       │   │                    and personalised insight engine
+│       │   └── shared.jsx       design system: tokens, BottomTabBar, ProfileTab,
+│       │                        PrimaryBtn, Toast, LegalDrawer, and base log chips
 │       ├── api.js               all API calls
-│       ├── main.jsx             app entry point + auth routing
-│       └── index.css
+│       ├── main.jsx             app entry point, auth check, splash screen
+│       └── index.css            global layout and mobile viewport styles
 └── backend/
     ├── middleware/
     │   └── requireAuth.js
@@ -30,6 +34,17 @@ ciren/
     │   └── logs.js
     ├── db.js                    SQLite setup + migrations
     └── server.js                Express server + static file serving
+
+Architecture decisions
+
+Cycle state is derived from logs, not just settings
+computeCycleState accepts the full logs array alongside the user's settings. It scans logged flow entries (Light, Medium, Heavy) to find the most recent consecutive period sequence and uses its start date if it is more recent than the lastPeriodStart stored in settings. If no new period has been logged and the predicted cycle length has been exceeded, the cycle day count extends rather than wrapping, so the app reflects a late period rather than silently resetting.
+
+Personalised insights are built from per-phase log history
+getPersonalizedTip looks at all historical logs, filters to entries that fell in the same phase as today (using the settings cycle anchor to approximate each day's phase), counts value frequencies per category, and returns the tip for the most common pattern. This means the Food, Mood, Mind, Move, and Sleep tips get more relevant over time as the user logs more cycles. If no history exists for a category in the current phase, it falls back to today's log, then to null so the generic phase insight shows instead.
+
+Sessions are persisted in SQLite
+Express sessions use better-sqlite3-session-store backed by the same SQLite database as the rest of the app. This means sessions survive server restarts without needing a separate Redis instance, which keeps the Railway deployment to a single service.
 
 Environment variables
 Set these in Railway under Variables:
