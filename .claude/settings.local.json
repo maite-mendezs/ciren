@@ -19,7 +19,11 @@
       "Bash(node *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(identify /Users/maitemendez/Documents/ciren/ciren/frontend/public/logo.png)",
+      "Bash(sips -g pixelWidth -g pixelHeight /Users/maitemendez/Documents/ciren/ciren/frontend/public/logo.png)",
+      "Bash(convert --version)",
+      "Bash(pip3 install *)"
     ]
   }
 }
