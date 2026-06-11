@@ -53,6 +53,46 @@ function Stepper({ val, min, max, onChange }) {
   );
 }
 
+function HomeScreenPrompt({ onNext }) {
+  return (
+    <div style={{ flex:1, display:'flex', flexDirection:'column', background:G.stone }}>
+      <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 28px' }}>
+        <div style={{ fontSize:28, fontWeight:300, color:G.ink, fontFamily:SERIF, letterSpacing:'.01em', marginBottom:10 }}>
+          Add cirén to your home screen
+        </div>
+        <p style={{ fontSize:13, color:G.muted, marginBottom:32, fontFamily:SANS, lineHeight:1.6 }}>
+          For the best experience, install cirén like a native app
+        </p>
+        <div style={{ background:'#fff', borderRadius:16, padding:'16px 20px', marginBottom:12 }}>
+          <div style={{ fontSize:13, fontWeight:500, color:G.ink, fontFamily:SANS, marginBottom:6 }}>Safari</div>
+          <div style={{ fontSize:13, color:G.muted, fontFamily:SANS, lineHeight:1.6 }}>
+            Tap the share icon ⎙ then tap <strong style={{ color:G.ink }}>Add to Home Screen</strong>
+          </div>
+        </div>
+        <div style={{ background:'#fff', borderRadius:16, padding:'16px 20px' }}>
+          <div style={{ fontSize:13, fontWeight:500, color:G.ink, fontFamily:SANS, marginBottom:6 }}>Chrome</div>
+          <div style={{ fontSize:13, color:G.muted, fontFamily:SANS, lineHeight:1.6 }}>
+            Tap the menu icon ⋮ then tap <strong style={{ color:G.ink }}>Add to Home Screen</strong>
+          </div>
+        </div>
+      </div>
+      <div style={{ padding:'0 24px 40px', flexShrink:0 }}>
+        <PrimaryBtn onClick={onNext} phase={PHASES.luteal}>
+          Done
+        </PrimaryBtn>
+        <button onClick={onNext} style={{
+          display:'block', width:'100%', marginTop:14,
+          background:'none', border:'none', cursor:'pointer',
+          fontSize:13, color:'#8E8E93', fontFamily:SANS,
+          textDecoration:'underline', textUnderlineOffset:3,
+        }}>
+          I'll do this later
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function NameScreen({ name, setName, onNext }) {
   const canContinue = name.trim().length > 0;
   return (
@@ -150,7 +190,7 @@ function CycleData({ lastPeriodStart, setLastPeriodStart, cycleLength, setCycleL
 }
 
 export function OnboardingFlow({ onComplete }) {
-  const [screen, setScreen]                   = useState(1);
+  const [screen, setScreen]                   = useState(0);
   const [name, setName]                       = useState('');
   const [lastPeriodStart, setLastPeriodStart] = useState('');
   const [cycleLength, setCycleLength]         = useState(28);
@@ -186,6 +226,9 @@ export function OnboardingFlow({ onComplete }) {
         </div>
       )}
 
+      {screen === 0 && (
+        <HomeScreenPrompt onNext={() => setScreen(1)} />
+      )}
       {screen === 1 && (
         <NameScreen name={name} setName={setName} onNext={() => setScreen(2)} />
       )}

@@ -30,7 +30,7 @@ function Splash({ onDone }) {
         position: 'fixed', inset: 0,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 18,
-        background: '#ECEAF3',
+        background: '#D6D2E1',
         opacity: fadingOut ? 0 : 1,
         transition: 'opacity .4s ease',
         zIndex: 9999,
